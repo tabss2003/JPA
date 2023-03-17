@@ -37,7 +37,7 @@ public class Order {
     //==연관관계 메서드 : 컨트롤 하는 쪽이 가지고 있는 게 좋다.==//
     public void setMember(Member member){
         this.member =member;
-        member.getOrdes().add(this);
+        member.getOrders().add(this);
     }
 
     public void addOrderItem(OrderItem orderItem){

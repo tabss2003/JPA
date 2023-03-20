@@ -105,4 +105,27 @@ public class OrderRepository {
                 " join o.delivery d", OrderSimpleQueryDto.class)
                 .getResultList();
     }
+
+    public List<Order> findAllByMemberDelivery(int offeset, int limit) {
+        return em.createQuery(
+                        "select o from Order o"+
+                                " join fetch o.member m "+
+                                " join fetch o.delivery d ",Order.class)
+                .setFirstResult(offeset)
+                .setMaxResults(limit)
+                .getResultList();
+    }
+
+    // DB 입장에서 조인을 할경우 일대다 일경우 다만큼 조인이 되어버림
+    // DB의 distinct -> 컬럼 내용이 전부 똑같아야 중복 제거가 됨
+    // JPA에서 자체적으로 distinct가 있으면 Order가 같은 id값이면 중복 제거를 해서 값을 가지고 온다
+    public List<Order> findAllByItem() {
+        return em.createQuery(
+                "select distinct o from Order o"+
+                        " join fetch o.member m "+
+                        " join fetch o.delivery d "+
+                        " join fetch o.orderItems oi" +
+                        " join fetch oi.item i ",Order.class)
+                .getResultList();
+    }
 }

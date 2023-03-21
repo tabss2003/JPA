@@ -6,6 +6,10 @@ import jpabook.jpashop.domain.OrderItem;
 import jpabook.jpashop.domain.OrderStatus;
 import jpabook.jpashop.repository.OrderRepository;
 import jpabook.jpashop.repository.OrderSearch;
+import jpabook.jpashop.repository.order.query.OrderFlatDto;
+import jpabook.jpashop.repository.order.query.OrderItemQueryDto;
+import jpabook.jpashop.repository.order.query.OrderQueryDto;
+import jpabook.jpashop.repository.order.query.OrderQueryRespository;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,10 +21,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.toList;
+
 @RestController
 @RequiredArgsConstructor
 public class OrderApiController {
     private final OrderRepository orderRepository;
+    private final OrderQueryRespository orderQueryRespository;
 
     @GetMapping("/api/v1/orders")
     public List<Order> ordersV1(){
@@ -61,6 +69,42 @@ public class OrderApiController {
                 .map(o->new OrderDto(o))
                 .collect(Collectors.toList());
         return result;
+    }
+
+    // N + 1 문제 발생
+    @GetMapping("/api/v4/orders")
+    public List<OrderQueryDto> oedersV4(){
+        return orderQueryRespository.findOrderQueryDtos();
+
+    }
+
+    // query 2번
+    @GetMapping("/api/v5/orders")
+    public List<OrderQueryDto> oedersV5(){
+        return orderQueryRespository.findAllByDto_optimization();
+    }
+
+
+    /**
+     * [장점]
+     * - query 1번
+     * [단점]
+     * - 조인으로 인해 DB에서 애플리케이션에 전달하는 데이터에 중복 데이터가 추가되므로 상황에 따라 v5보다 더 느릴 수도 있다.
+     * - 애플리케이션에서 추가 작업이 크다
+     * - 페이징 불가능
+     */
+    @GetMapping("/api/v6/orders")
+    public List<OrderQueryDto> oedersV6(){
+        List<OrderFlatDto> flats = orderQueryRespository.findAllByDto_flat();
+
+        //중복 쿼리 걸러내기 - 메모리에서 중복 걸러내기 위한 코드
+        return flats.stream()
+                .collect(groupingBy(o -> new OrderQueryDto(o.getOrderId(), o.getName(), o.getOrderDate(), o.getOrderStatus(), o.getAddress()),
+                        mapping(o -> new OrderItemQueryDto(o.getOrderId(), o.getItemName(), o.getOrderPrice(), o.getCount()), toList())
+                )).entrySet().stream()
+                .map(e -> new OrderQueryDto(e.getKey().getOrderId(), e.getKey().getName(), e.getKey().getOrderDate(), e.getKey().getOrderStatus(), e.getKey().getAddress(), e.getValue()))
+                .collect(toList());
+
     }
 
     @Getter
